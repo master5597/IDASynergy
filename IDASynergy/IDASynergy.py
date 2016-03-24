@@ -41,10 +41,20 @@ This is both the main and the GUI module
 
 # based on http://code.google.com/p/idapython/source/browse/trunk/examples/ex_askusingform.py
 try:
-    from PySide.QtUiTools import QUiLoader
-    from PySide.QtGui import QFileDialog, QWidget, QListWidgetItem, QMovie, QImageReader, QSizePolicy, QPalette
-    from PySide.QtCore import Qt, QUrl, Qt
-    pyside_loaded = True
+    # initiall look for PyQT starting in IDA 6.9.  Otherwise try and fall back to old PySide.
+    try:
+        from PyQt5.uic import loadUi
+        from PyQt5.QtWidgets import QFileDialog, QWidget, QListWidgetItem, QSizePolicy
+        from PyQt5.QtGui import QMovie, QImageReader, QPalette
+        from PyQt5.QtCore import Qt, QUrl, Qt
+	pyqt_loaded = True
+    except:
+        from PySide.QtUiTools import QUiLoader
+        from PySide.QtGui import QFileDialog, QWidget, QListWidgetItem, QMovie, QImageReader, QSizePolicy, QPalette
+        from PySide.QtCore import Qt, QUrl, Qt
+	pyqt_loaded = False
+
+    gui_loaded = True
 
     class dialog:
         def __call__(self, f):
@@ -56,7 +66,8 @@ try:
                 ui_path = os.path.join(path, "ui")
                 old_wd = os.getcwd()
                 os.chdir(ui_path)
-                args[0].loader.setWorkingDirectory(ui_path)
+                if not pyqt_loaded:  # if using old PySide
+                    args[0].loader.setWorkingDirectory(ui_path)
                 f(args[0])
                 os.chdir(old_wd)
             return wrapper
@@ -64,7 +75,8 @@ try:
     class IDASynergyConfigUI(QWidget):
         def __init__(self, cb_ok, cb_fail): 
             super(IDASynergyConfigUI, self).__init__()
-            self.loader = QUiLoader()
+            if not pyqt_loaded:  # if using old PySide
+                self.loader = QUiLoader()
             self.initUI()
             self.ui.buttonBox.accepted.connect(cb_ok)
             self.ui.buttonBox.rejected.connect(cb_fail)
@@ -104,14 +116,18 @@ try:
 
         @dialog()
         def initUI(self):
-            self.ui = self.loader.load("config.ui")
+            if pyqt_loaded:  # if using pyQT
+                self.ui = loadUi("config.ui")
+            else:  # if using old PySide
+                self.ui = self.loader.load("config.ui")
             self.ui.pushButton.clicked.connect(self.selectFile)
             self.ui.checkSVN.clicked.connect(self.checkSVNClicked)
 
     class IDASynergyCommitUI(QWidget):
         def __init__(self, cb_ok, cb_fail):
             super(IDASynergyCommitUI, self).__init__()
-            self.loader = QUiLoader()
+            if not pyqt_loaded:  # if using old PySide
+                self.loader = QUiLoader()
             self.initUI()
             self.ui.buttonBox.accepted.connect(cb_ok)
             self.ui.buttonBox.rejected.connect(cb_fail)
@@ -146,13 +162,17 @@ try:
 
         @dialog()
         def initUI(self):
-            self.ui = self.loader.load("commit.ui")
+            if pyqt_loaded:  # if using pyQT
+                self.ui = loadUi("commit.ui")
+            else:  # if using old PySide
+                self.ui = self.loader.load("commit.ui")
 
 
     class IDASynergyLogUI(QWidget):
         def __init__(self):
             super(IDASynergyLogUI, self).__init__()
-            self.loader = QUiLoader()
+            if not pyqt_loaded:  # if using old PySide
+                self.loader = QUiLoader()
             self.initUI()
 
         def do_modal(self, cb_ok, cb_fail):
@@ -163,12 +183,17 @@ try:
         @dialog()
         def initUI(self):
             self.ui_path = os.path.dirname(sys.argv[0]) + os.path.sep + "ui" + os.path.sep
-            self.ui = self.loader.load("browselog.ui")
+            if pyqt_loaded:  # if using pyQT
+                self.ui = loadUi("browselog.ui")
+            else:  # if using old PySide
+                self.ui = self.loader.load("browselog.ui")
+
 
     class IDASynergyWaitUI(QWidget):
         def __init__(self):
             super(IDASynergyWaitUI, self).__init__()
-            self.loader = QUiLoader()
+            if not pyqt_loaded:  # if using old PySide
+                self.loader = QUiLoader()
             self.initUI()
 
         def do_modal(self):
@@ -180,13 +205,18 @@ try:
         @dialog()
         def initUI(self):
             self.ui_path = os.path.dirname(sys.argv[0]) + "/ui/"
-            self.ui = self.loader.load("wait.ui")
+            if pyqt_loaded:  # if using pyQT
+                self.ui = loadUi("wait.ui")
+            else:  # if using old PySide
+                self.ui = self.loader.load("wait.ui")
+
 
     class IDASynergyChooserUI(QWidget):
 
         def __init__(self):
             super(IDASynergyChooserUI, self).__init__()
-            self.loader = QUiLoader()
+            if not pyqt_loaded:  # if using old PySide
+                self.loader = QUiLoader()
             self.initUI()
             self.result = None
 
@@ -238,10 +268,13 @@ try:
 
         @dialog()
         def initUI(self):
-            self.ui = self.loader.load("choose.ui")
+            if pyqt_loaded:  # if using pyQT
+                self.ui = loadUi("choose.ui")
+            else:  # if using old PySide
+                self.ui = self.loader.load("choose.ui")
 except:
     print "[!] In order to run IDASynergy you'll need to get a modified version of PySide that works with your version of IDA.\n    See https://www.hex-rays.com/products/ida/support/download.shtml"
-    pyside_loaded = False
+    gui_loaded = False
 
 class IDASynergyConfig:
     def __init__(self):
@@ -544,7 +577,7 @@ vh_idb, vh_idp, vh_ui, menu = None, None, None, None
 
 def create_menu():
     global vh_idb, vh_idp, vh_ui, menu 
-    if pyside_loaded:
+    if gui_loaded:
         menu = IDASynergyMenu()
         vh_idb = IDASynergyHooksIDB()
         vh_idp = IDASynergyHooksIDP()
